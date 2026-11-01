@@ -26,3 +26,11 @@ Para recrear este entorno en esta computadora usando el intérprete disponible:
 En otra computadora se requiere un Python 3.12 x64 disponible y se sustituye la ruta del intérprete. El entorno depende de su Python base y no debe copiarse entre computadoras. Las versiones fijadas registran lo instalado; no se han archivado ruedas para instalación sin red.
 
 I1 se limitará a dominio, contratos, coordinación y dobles de prueba en memoria. No conversa con modelos reales ni guarda historial durable. SQLite y recuperación real corresponden a I2; Ollama a I3; interfaz a I4; aceptación global a I5.
+
+## Seguimiento del trabajo
+
+El repositorio Git es local, en la rama `codex/i1-preparacion`, sin remoto configurado. El primer commit `6b5a1ed` conserva la preparación y su estado pausado. Se crearán commits por avances coherentes y revisados.
+
+La [bitácora didáctica](docs/BITACORA_JARVIS.md) explica los pasos y conceptos. Su copia Word está creada en `docs/Bitacora_JARVIS.docx`, como borrador pendiente de revisión visual: falta el renderizador LibreOffice del entorno. Consulta [el registro de revisión](docs/REVISION_BITACORA.md). `tools/build_bitacora.py` la genera con el runtime documental; no es código de I1 y no añade dependencias al Core.
+
+Las instrucciones persistentes están en [AGENTS.md](AGENTS.md). La implementación continúa esperando «Jarvis go».
