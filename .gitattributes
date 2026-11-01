@@ -1,0 +1,7 @@
+* text=auto
+*.md text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.docx binary
+# Preserve the consultation extract, including source trailing spaces.
+docs/evidence/word-i1-extract.txt -whitespace

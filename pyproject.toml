@@ -1,0 +1,12 @@
+[project]
+name = "jarvis-local-core"
+version = "0.1.0.dev1"
+description = "I1: dominio y contratos; únicamente validación simulada"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-ra --strict-markers"
+filterwarnings = ["error"]

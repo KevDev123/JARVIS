@@ -1,0 +1,580 @@
+B03123 5. Requisitos funcionales
+B03124 Estos requisitos describen lo que el usuario podrá hacer.
+B03125 ID | Requisito | Prioridad
+RF-01 | Iniciar una conversación nueva | Crítica
+RF-02 | Enviar mensajes al modelo local | Crítica
+RF-03 | Recibir respuestas progresivamente | Crítica
+RF-04 | Detener una respuesta en curso | Crítica
+RF-05 | Detectar Ollama y sus modelos disponibles | Crítica
+RF-06 | Seleccionar el modelo activo | Crítica
+RF-07 | Guardar conversaciones localmente | Crítica
+RF-08 | Recuperar conversaciones anteriores | Crítica
+RF-09 | Renombrar y eliminar conversaciones | Alta
+RF-10 | Guardar y recuperar configuraciones | Crítica
+RF-11 | Mostrar errores comprensibles | Crítica
+RF-12 | Consultar diagnóstico básico | Alta
+RF-13 | Minimizar a la bandeja del sistema | Alta
+RF-14 | Salir completamente de Jarvis | Crítica
+RF-15 | Utilizar el chat sin conexión a Internet | Crítica
+B03126 Todos los requisitos críticos deberán estar completos para declarar terminado el MVP.
+B03127 6. Requisitos no funcionales
+B03128 Estos definen cómo debe comportarse el sistema.
+B03129 ID | Categoría | Requisito
+RNF-01 | Rendimiento | La interfaz no se bloqueará durante la generación
+RNF-02 | Memoria | Jarvis no cargará modelos innecesariamente al iniciar
+RNF-03 | Seguridad | El modelo no podrá ejecutar herramientas del sistema
+RNF-04 | Privacidad | Historial y configuración permanecerán locales
+RNF-05 | Estabilidad | Los fallos de Ollama no cerrarán inesperadamente Jarvis
+RNF-06 | Modularidad | La interfaz no dependerá directamente del proveedor
+RNF-07 | Recuperación | El historial confirmado persistirá tras reiniciar
+RNF-08 | Usabilidad | Errores y estados serán comprensibles
+RNF-09 | Compatibilidad | Funcionamiento comprobado en las versiones de Windows objetivo
+RNF-10 | Mantenimiento | Registro técnico y pruebas automatizadas
+B03130 Para rendimiento definiremos umbrales numéricos después de medir el prototipo en el hardware objetivo.
+B03131 No sería riguroso prometer ahora un consumo específico de RAM o un tiempo fijo de respuesta sin conocer el modelo seleccionado y su rendimiento real.
+B03241 J.A.R.V.I.S. — Arquitectura Técnica Definitiva del MVP
+B03242 DISEÑO CONCEPTUAL · VERSIÓN 2.1 · PYTHON STACK
+B03243 Decisión confirmada: utilizaremos Python + PySide6 + Ollama + SQLite como base tecnológica del primer MVP de Jarvis.
+B03244 Con esta elección dejamos de comparar lenguajes y comenzamos a definir cómo se organizará técnicamente la aplicación, qué responsabilidad tendrá cada tecnología y cómo evitaremos que las decisiones iniciales limiten las capacidades futuras.
+B03245 Seguimos en la etapa de diseño. No programaremos, instalaremos dependencias ni crearemos archivos todavía.
+B03248 Hay una decisión fundamental: Jarvis Core será independiente tanto de PySide6 como de Ollama.
+B03249 Esto significa que el núcleo no necesitará saber cómo se dibuja una ventana ni cómo se construye una solicitud específica para Ollama. Esas responsabilidades corresponderán a adaptadores.
+B03250 Esta separación facilitará las pruebas y permitirá sustituir componentes sin rehacer la aplicación completa.
+B03251 2. Ventajas y limitaciones de nuestra elección
+B03252 Tecnología | Ventajas | Limitaciones
+Python | Desarrollo accesible, ecosistema de IA, buenas bibliotecas | No es ideal para cálculos intensivos escritos enteramente en Python
+PySide6 | Interfaz de escritorio, ventanas, bandeja, señales y eventos | Requiere administrar cuidadosamente los hilos y el empaquetado
+Ollama | Inferencia local, sin tarifa por llamada, API local | El rendimiento depende del hardware y del modelo
+SQLite | Ligero, transaccional, sin servidor independiente | Requiere controlar concurrencia, migraciones y crecimiento de datos
+B03253 Para el MVP estas limitaciones son manejables.
+B03254 No necesitamos entrenar modelos ni desarrollar un motor gráfico de alto rendimiento. Nuestro trabajo principal será coordinar componentes, mostrar información y comunicarnos con Ollama.
+B03255 3. Compatibilidad: Windows y Python
+B03256 Aquí conviene tomar una decisión concreta.
+B03257 Python
+B03258 Propongo Python 3.12 de 64 bits como versión inicial de referencia, no necesariamente la más reciente.
+B03259 La razón es sencilla: para un proyecto con varias dependencias, nos interesa priorizar compatibilidad y estabilidad antes que novedades del lenguaje.
+B03260 La versión actual de PySide6 admite varias versiones de Python, incluida la 3.12. 
+B03261 PyPI+1
+B03262 Windows
+B03263 PySide6/Qt ofrece soporte para Windows 10 y Windows 11 de 64 bits. Sin embargo, hay una consideración relevante: Qt indica que 6.12 será la última versión compatible con Windows 10. 
+B03264 Qt for Python
+B03265 Por ello, definiremos:
+B03266 Windows 11: plataforma principal a largo plazo.
+B03267 Windows 10: compatibilidad condicionada a versiones de dependencias que todavía lo soporten.
+B03268 Arquitectura: x64 inicialmente.
+B03269 No prometeremos compatibilidad indefinida con Windows 10. También debemos considerar que su soporte general por Microsoft finalizó en octubre de 2025, salvo programas de soporte extendido aplicables.
+B03270 4. Arquitectura interna: cuatro capas
+B03271 En lugar de organizar Jarvis como un conjunto de ventanas que contienen toda la lógica, utilizaremos una separación inspirada en arquitectura limpia.
+B03272 Capa | Responsabilidad | Ejemplo
+Presentación | Mostrar información y recibir interacciones | Pantalla Chat
+Aplicación | Coordinar casos de uso | Enviar mensaje
+Dominio | Definir reglas y entidades | Conversation, Message
+Infraestructura | Comunicarse con tecnologías externas | Ollama, SQLite
+B03273 Ejemplo: cuando envías un mensaje
+B03274 PySide6 recibe el mensaje.
+B03275 Comprueba que la entrada sea válida y comunica la solicitud a la capa de aplicación.
+B03276 Jarvis Core prepara la conversación.
+B03277 Recupera el contexto necesario y comprueba el modelo seleccionado.
+B03278 Model Adapter consulta Ollama.
+B03279 Envía la solicitud mediante su interfaz local.
+B03280 Ollama genera la respuesta.
+B03281 Los fragmentos se entregan progresivamente a la aplicación.
+B03282 PySide6 actualiza la pantalla.
+B03283 Muestra los fragmentos sin bloquear la interfaz.
+B03284 Storage guarda el resultado.
+B03285 Registra el mensaje con su estado final, cancelado o interrumpido.
+B03286 Esta separación también evitará que una futura integración con Gemini o GPT obligue a modificar las ventanas.
+B03287 5. Concurrencia: cómo evitar que Jarvis se congele
+B03288 Este es uno de los riesgos técnicos más importantes.
+B03289 En PySide6, las operaciones prolongadas no deben bloquear el hilo principal de la interfaz.
+B03290 Por eso propongo tres responsabilidades separadas:
+B03291 Hilo de interfaz: renderizar ventanas y responder a clics.
+B03292 Trabajadores de comunicación: realizar solicitudes a Ollama y recibir streaming.
+B03293 Gestor de almacenamiento: coordinar operaciones de SQLite sin bloquear la interfaz.
+B03294 No necesitamos crear un hilo por cada módulo. Podemos utilizar trabajadores controlados y señales de Qt para comunicar resultados.
+B03295 También habrá que gestionar correctamente cancelaciones y cierres para evitar que una respuesta de una conversación anterior aparezca en otra.
+B03296 Política de concurrencia inicial
+B03297 Para el MVP permitiría una generación activa a la vez, aunque podamos tener muchas conversaciones guardadas.
+B03298 Es una restricción razonable para el hardware inicial y simplifica considerablemente el manejo de recursos.
+B03299 6. Gestión de SQLite
+B03300 SQLite guardará conversaciones, mensajes, configuraciones y eventos de diagnóstico.
+B03301 Mi recomendación es utilizar un repositorio de datos que controle las transacciones y el acceso concurrente.
+B03302 SQLite dispone del modo WAL, que permite que lectores y escritores operen simultáneamente en determinadas condiciones, aunque sigue habiendo límites para las escrituras concurrentes. 
+B03303 sqlite.org
+B03304 Decisiones técnicas
+B03305 No compartir conexiones arbitrariamente entre hilos.
+B03306 Utilizar transacciones para cambios relacionados.
+B03307 Aplicar migraciones versionadas.
+B03308 Activar comprobaciones de integridad.
+B03309 Guardar los datos en una carpeta apropiada del perfil de Windows.
+B03310 Diferenciar eliminación de conversaciones y eliminación de registros técnicos.
+B03311 La documentación de Python también establece consideraciones específicas sobre conexiones y modos de concurrencia de SQLite. 
+B03312 Python 3.15.2 documentation
+B03313 7. Gestión de Ollama
+B03314 Ollama se ejecutará como componente externo. Jarvis se comunicará con él a través de su API local.
+B03315 El adaptador será responsable de:
+B03316 Detectar si el servicio responde.
+B03317 Consultar los modelos disponibles.
+B03318 Enviar conversaciones.
+B03319 Recibir respuestas progresivamente.
+B03320 Cancelar solicitudes.
+B03321 Gestionar errores.
+B03322 Solicitar la liberación del modelo cuando corresponda.
+B03323 Ollama dispone de streaming y de una opción keep_alive que controla cuánto tiempo permanece cargado un modelo después de una solicitud. 
+B03324 GitHub
+B03325 No confiaremos en que cerrar la ventana de Jarvis descargue automáticamente el modelo. Ese comportamiento deberá gestionarse y verificarse.
+B03326 Restricción importante
+B03327 Aunque Ollama funcione localmente, Jarvis deberá conectarse solamente al servicio configurado y autorizado.
+B03328 Si en el futuro permitimos conectarnos a Ollama en otra computadora, eso se considerará una conexión remota y requerirá controles de privacidad adicionales.
+B03329 8. Dependencias: qué utilizaremos y qué evitaremos
+B03330 Para el MVP prefiero mantener pocas dependencias.
+B03331 Categoría | Decisión inicial
+Lenguaje | Python 3.12 x64
+Interfaz | PySide6
+Inferencia | Ollama
+HTTP | Cliente compatible con streaming y cancelación
+Base de datos | sqlite3 de Python
+Validación | Tipos y validaciones explícitas; biblioteca adicional solo si aporta valor
+Pruebas | pytest y pruebas de interfaz
+Logs | Módulo estándar logging con protección de datos
+Empaquetado | Evaluar PyInstaller o alternativa compatible
+B03332 No incorporaría todavía frameworks de agentes, bases vectoriales, librerías de voz o herramientas de automatización del escritorio.
+B03333 Las añadiremos cuando llegue su fase correspondiente.
+B03334 También tendremos un archivo de dependencias con versiones controladas y un procedimiento reproducible para preparar el entorno.
+B03335 9. Estructura definitiva propuesta
+B03336 La estructura del MVP será más sencilla que la arquitectura completa de Jarvis, pero mantendrá límites claros.
+B03337 jarvis/
+B03338 ├── src/
+B03339 │   └── jarvis/
+B03340 │       ├── main.py
+B03341 │       ├── presentation/
+B03342 │       │   ├── windows/
+B03343 │       │   ├── widgets/
+B03344 │       │   └── viewmodels/
+B03345 │       ├── application/
+B03346 │       │   ├── conversation/
+B03347 │       │   └── settings/
+B03348 │       ├── domain/
+B03349 │       │   ├── entities/
+B03350 │       │   └── contracts/
+B03351 │       ├── infrastructure/
+B03352 │       │   ├── ollama/
+B03353 │       │   ├── persistence/
+B03354 │       │   └── diagnostics/
+B03355 │       └── security/
+B03356 ├── tests/
+B03357 │   ├── unit/
+B03358 │   ├── integration/
+B03359 │   └── acceptance/
+B03360 ├── resources/
+B03361 ├── docs/
+B03362 └── pyproject.toml
+B03364 Reglas de dependencia
+B03365 La capa de dominio no importará PySide6 ni Ollama.
+B03366 La capa de aplicación utilizará contratos abstractos.
+B03367 La infraestructura implementará esos contratos.
+B03368 La interfaz invocará casos de uso, no consultas SQL ni solicitudes HTTP directamente.
+B03369 Estas reglas son más importantes que el nombre exacto de cada carpeta.
+B03370 10. Rendimiento en el equipo inicial
+B03371 Para la computadora que hemos considerado como punto de partida —un Dell Latitude 5490 con i5-8350U, 16 GB de RAM y gráficos integrados— debemos ser conservadores.
+B03372 El límite principal no será necesariamente PySide6, sino la inferencia local.
+B03373 Un modelo grande puede consumir demasiada RAM y producir respuestas lentas en CPU.
+B03374 Recomendación de dimensionamiento
+B03375 Estrategia para modelos locales
+B03376 Tamaño | Uso propuesto
+1B–3B | Primeras pruebas y tareas sencillas
+4B–7B | Evaluar posteriormente, según cuantización, memoria y velocidad
+Modelos mayores | No recomendados como punto de partida en este equipo
+B03377 Son rangos orientativos de parámetros, no garantías de rendimiento. El consumo real depende del modelo, cuantización y contexto.
+B03378 La primera prueba deberá medir latencia inicial, velocidad de generación, RAM máxima y estabilidad.
+B03379 También limitaremos inicialmente el tamaño del contexto y la cantidad de generaciones simultáneas.
+B03380 No fijaría todavía un modelo específico hasta comprobar las opciones disponibles y su comportamiento real.
+B03381 11. Riesgos técnicos y mitigaciones
+B03382 Riesgo | Consecuencia | Mitigación
+Modelo demasiado grande | Lentitud o falta de memoria | Modelos pequeños y perfiles de recursos
+Bloqueo del hilo principal | Interfaz congelada | Trabajadores y señales
+Acoplamiento a Ollama | Difícil añadir APIs | Contrato de proveedor independiente
+Escrituras simultáneas | Errores de SQLite | Repositorios y transacciones
+Empaquetado defectuoso | Aplicación que no inicia | Pruebas en instalación limpia
+Cierre durante streaming | Mensajes incompletos | Estados y cancelación controlada
+Datos expuestos en logs | Riesgo de privacidad | Redacción y minimización
+Dependencias incompatibles | Fallos de instalación | Versiones fijadas y pruebas
+Actualizaciones de Windows/Qt | Pérdida de compatibilidad | Matriz de versiones y regresión
+B03383 Un riesgo adicional es la licencia de distribución: PySide6/Qt tiene condiciones de licencia que deberemos revisar antes de publicar o distribuir Jarvis, especialmente si decidimos mantener el código cerrado. 
+B03384 doc.qt.io
+B03385 12. Decisiones técnicas que ya podemos cerrar
+B03386 Python 3.12 x64
+B03387 Versión inicial de referencia.
+B03388 PySide6 Widgets
+B03389 Interfaz inicial; efectos gráficos avanzados después.
+B03390 Arquitectura por capas
+B03391 Presentación, aplicación, dominio e infraestructura.
+B03392 Ollama mediante adaptador
+B03393 Sin dependencia directa desde Jarvis Core.
+B03394 SQLite local
+B03395 Persistencia con migraciones y transacciones.
+B03396 Una generación activa
+B03397 Control de recursos en el MVP.
+B03398 Operaciones no bloqueantes
+B03399 Streaming y almacenamiento fuera del hilo visual.
+B03400 Sin ejecución de herramientas
+B03401 El modelo solo genera respuestas en la versión 0.1.
+B03402 Dependencias mínimas
+B03403 Evitar complejidad prematura.
+B03404 Pruebas desde el inicio
+B03405 Integración, regresión, errores y seguridad.
+B03518 J.A.R.V.I.S. — Contratos Técnicos Internos
+B03519 DISEÑO CONCEPTUAL · VERSIÓN 2.3 · MVP 0.1
+B03520 Objetivo: definir cómo se comunicarán los componentes de Jarvis, qué información intercambiarán y qué ocurrirá cuando una conversación se inicie, se interrumpa, falle o se guarde.
+B03521 Mantendremos la arquitectura aprobada:
+B03522 Python: lógica y coordinación.
+B03523 PySide6: interfaz de escritorio.
+B03524 Ollama: inferencia local.
+B03525 SQLite: persistencia.
+B03526 Local First + API Ready: proveedores sustituibles.
+B03527 Seguridad equilibrada: sin ejecución de herramientas por parte del modelo en el MVP.
+B03528 Todavía no escribiremos código ni crearemos archivos.
+B03529 1. Decisión arquitectónica principal
+B03530 Jarvis 0.1 utilizará un monolito modular con límites internos estrictos.
+B03531 Esto significa que la mayor parte de la aplicación funcionará en un proceso Python, mientras Ollama permanecerá como servicio externo.
+B03532 No crearemos microservicios innecesarios para un MVP de escritorio.
+B03535 2. Entidades principales del dominio
+B03536 Una entidad representa información con identidad y reglas propias.
+B03537 Para el MVP necesitaremos seis conceptos fundamentales.
+B03538 Entidad | Responsabilidad
+Conversation | Representar una conversación
+Message | Representar cada mensaje
+Generation | Controlar una solicitud de respuesta
+ModelDescriptor | Describir un modelo disponible
+AppSettings | Conservar preferencias
+DiagnosticEvent | Registrar eventos técnicos
+B03539 Conversation
+B03540 Representará una conversación completa.
+B03541 Campos conceptuales:
+B03542 Campo | Descripción
+id | Identificador único
+title | Título visible
+created_at | Fecha de creación
+updated_at | Última modificación
+status | Estado de la conversación
+messages | Mensajes asociados, recuperados cuando corresponda
+B03543 El historial no dependerá de que todos los mensajes permanezcan cargados en memoria.
+B03544 Podremos recuperar conversaciones desde SQLite cuando el usuario las abra.
+B03545 Message
+B03546 Cada mensaje tendrá identidad propia.
+B03547 Campo | Descripción
+id | Identificador único
+conversation_id | Conversación a la que pertenece
+role | Usuario, asistente o sistema interno
+content | Contenido del mensaje
+status | Pendiente, completo, cancelado o fallido
+created_at | Fecha de creación
+completed_at | Finalización, cuando corresponda
+generation_id | Generación asociada, si existe
+B03548 Los mensajes internos del sistema no se mostrarán necesariamente como mensajes normales.
+B03549 Además, los roles utilizados internamente deberán distinguirse de los roles que cada proveedor de IA acepte.
+B03550 Generation
+B03551 Esta entidad será especialmente importante.
+B03552 Una generación representa un intento concreto de producir una respuesta, no toda la conversación.
+B03553 Si el usuario solicita una respuesta, la cancela y vuelve a intentarlo, tendremos generaciones diferentes.
+B03554 Esto facilitará la auditoría, el manejo de errores y la prevención de respuestas duplicadas.
+B03555 3. Contratos de interfaces
+B03556 Una interfaz o contrato define qué operaciones ofrece un componente, sin obligar al resto del sistema a conocer su implementación.
+B03557 Propongo los siguientes contratos.
+B03558 Contrato | Operaciones conceptuales
+ModelProvider | Consultar disponibilidad, listar modelos, generar respuesta y cancelar
+ConversationRepository | Crear, consultar, actualizar y eliminar conversaciones
+MessageRepository | Guardar y recuperar mensajes
+SettingsRepository | Leer y actualizar preferencias
+GenerationCoordinator | Iniciar, supervisar y finalizar generaciones
+DiagnosticService | Registrar y consultar eventos técnicos
+B03559 Ejemplo práctico
+B03560 El Core solicitará al contrato ModelProvider que genere una respuesta.
+B03561 El adaptador Ollama implementará esa solicitud utilizando su API local.
+B03562 Cuando incorporemos GPT o Gemini, podremos desarrollar nuevos adaptadores que respeten el mismo contrato general.
+B03563 No necesitaremos cambiar la lógica de conversación para cada proveedor.
+B03564 4. Eventos internos
+B03565 Los eventos permitirán comunicar cambios de estado entre módulos.
+B03566 Por ejemplo, cuando Ollama comienza a responder, el sistema emitirá un evento que la interfaz podrá utilizar para actualizarse.
+B03567 Propongo un catálogo inicial:
+B03568 Evento | Significado
+conversation.created | Se creó una conversación
+conversation.selected | Se abrió una conversación
+message.submitted | El usuario envió un mensaje
+generation.started | Comenzó una generación
+generation.chunk_received | Llegó un fragmento de respuesta
+generation.completed | La respuesta terminó correctamente
+generation.cancel_requested | Se solicitó cancelar
+generation.cancelled | La cancelación quedó confirmada
+generation.failed | La generación falló
+message.persisted | El mensaje quedó guardado
+provider.disconnected | El proveedor dejó de responder
+B03569 Cada evento incluirá identificadores de conversación y generación cuando corresponda.
+B03570 Esto evitará que una respuesta tardía termine apareciendo en una conversación equivocada.
+B03571 Comunicación con PySide6
+B03572 Los servicios de aplicación producirán eventos de dominio o aplicación.
+B03573 Un adaptador de presentación los traducirá a señales de Qt.
+B03574 Así mantendremos la lógica del Core independiente de PySide6.
+B03577 Una decisión relevante es permitir que una operación pase de Cancelando a Completada si terminó realmente antes de que la cancelación surtiera efecto.
+B03578 El resultado deberá basarse en evidencia del adaptador, no simplemente en el botón que presionó el usuario.
+B03579 6. Ciclo de vida de un mensaje
+B03580 Veamos qué ocurrirá cuando escribas:
+B03581 «Jarvis, explícame qué es Firebase».
+B03582 Validación
+B03583 Se comprueba que el mensaje no esté vacío y que la conversación sea válida.
+B03584 Persistencia inicial
+B03585 Se guarda el mensaje del usuario y se registra la solicitud de generación.
+B03586 Preparación de contexto
+B03587 Se recuperan los mensajes pertinentes y se respetan los límites del modelo.
+B03588 Solicitud al proveedor
+B03589 El adaptador Ollama inicia la generación.
+B03590 Streaming
+B03591 Los fragmentos recibidos se muestran progresivamente.
+B03592 Finalización
+B03593 Se confirma el resultado y se guarda la respuesta con su estado.
+B03594 Actualización visual
+B03595 La interfaz muestra el estado final y habilita nuevas interacciones.
+B03596 Si falla el guardado inicial, Jarvis no deberá presentar el mensaje como persistido.
+B03597 Podremos decidir si permitir una conversación temporal en memoria, pero no será el comportamiento predeterminado del MVP.
+B03598 7. Streaming: respuestas en tiempo real
+B03599 El streaming permite mostrar una respuesta mientras el modelo la está generando.
+B03600 No esperaremos necesariamente a recibir todo el texto.
+B03601 Diseño propuesto
+B03602 El adaptador recibirá fragmentos del proveedor.
+B03603 El coordinador comprobará que pertenecen a una generación activa.
+B03604 Después los entregará a la interfaz mediante eventos.
+B03605 La interfaz acumulará el texto y lo actualizará de forma controlada.
+B03606 No actualizaremos toda la ventana por cada carácter recibido.
+B03607 Agruparemos actualizaciones cuando sea conveniente para evitar consumo excesivo de CPU.
+B03608 Protección frente a respuestas tardías
+B03609 Cada fragmento llevará asociado el identificador de generación.
+B03610 Si el usuario cambia de conversación o cancela la respuesta, los fragmentos antiguos no podrán modificar otra conversación.
+B03611 8. Cancelación segura
+B03612 Cancelar una respuesta no es lo mismo que cerrar toda la aplicación.
+B03613 Propongo tres niveles:
+B03614 Cancelación de generación: detener la respuesta actual.
+B03615 Cancelación de operación: detener una tarea interna concreta, como una comprobación de conexión.
+B03616 Cierre de aplicación: detener trabajadores, guardar estados recuperables y liberar recursos propios.
+B03617 Para el MVP, el caso principal será la cancelación de generación.
+B03618 Flujo
+B03619 El usuario presiona Detener.
+B03620 Jarvis registra generation.cancel_requested.
+B03621 El adaptador intenta interrumpir la solicitud.
+B03622 El coordinador espera una confirmación o detecta la terminación real.
+B03623 La generación termina como cancelada, completada o fallida, según corresponda.
+B03624 El texto parcial podrá conservarse con una indicación clara de que está incompleto.
+B03625 No se reutilizará automáticamente como respuesta final validada.
+B03626 9. Persistencia y consistencia
+B03627 SQLite será la fuente principal de verdad para las conversaciones guardadas.
+B03628 Necesitaremos distinguir entre:
+B03629 Estado visual: lo que aparece temporalmente en pantalla.
+B03630 Estado de aplicación: la operación que está ocurriendo.
+B03631 Estado persistido: lo que realmente quedó confirmado en SQLite.
+B03632 Esta distinción evitará mensajes engañosos.
+B03633 Reglas importantes
+B03634 Una conversación no se considerará guardada hasta que la transacción correspondiente termine correctamente.
+B03635 Los mensajes tendrán orden estable.
+B03636 Las generaciones interrumpidas conservarán un estado explícito.
+B03637 Al reiniciar Jarvis, las generaciones que quedaron activas por un cierre inesperado se marcarán como interrumpidas tras la recuperación.
+B03638 No reenviaremos automáticamente solicitudes incompletas sin una decisión explícita.
+B03639 10. Manejo de errores
+B03640 Necesitaremos errores comprensibles para el usuario y detalles técnicos útiles para diagnóstico.
+B03641 Propongo categorías estables.
+B03642 Categoría | Ejemplo | Respuesta
+Validación | Mensaje vacío | Solicitar entrada válida
+Proveedor | Ollama desconectado | Mostrar diagnóstico
+Modelo | Modelo no instalado | Solicitar seleccionar otro
+Tiempo | Solicitud agotó el límite | Ofrecer reintento
+Recursos | Memoria insuficiente | Sugerir modelo más pequeño
+Persistencia | Error de SQLite | Advertir que no se guardó
+Cancelación | Solicitud interrumpida | Marcar resultado parcial
+Interno | Excepción inesperada | Registrar error y recuperar interfaz
+B03643 Los errores internos tendrán identificadores de diagnóstico.
+B03644 La interfaz no mostrará trazas completas de Python al usuario normal, pero podrá ofrecer información técnica redactada para diagnóstico.
+B03645 No registraremos claves, tokens ni conversaciones completas en los logs técnicos por defecto.
+B03646 11. Seguridad de los contratos
+B03647 Aunque el MVP no ejecutará herramientas, estableceremos desde ahora reglas para impedir que un proveedor obtenga capacidades que no le corresponden.
+B03648 El modelo produce contenido; no concede permisos.
+B03649 Una respuesta como «ejecuta este comando» será tratada como texto.
+B03650 El adaptador Ollama no tendrá funciones de ejecución de comandos, modificación de archivos o control de Windows.
+B03651 Los contratos futuros de herramientas serán independientes y pasarán por el Security Gateway.
+B03652 También evitaremos interpretar contenido generado como HTML activo o instrucciones ejecutables dentro de la interfaz.
+B03653 12. Contratos de configuración
+B03654 Las preferencias deberán validarse y persistirse de forma controlada.
+B03655 Propongo separar:
+B03656 Configuración de usuario: tema, inicio automático, modelo preferido y comportamiento de ventanas.
+B03657 Configuración del proveedor: dirección local autorizada, tiempos de espera y parámetros compatibles.
+B03658 Configuración interna: versión de esquema, límites operativos y opciones técnicas.
+B03659 Los cambios críticos no se aplicarán silenciosamente si pueden interrumpir una generación activa.
+B03660 Por ejemplo, cambiar de modelo mientras Ollama está respondiendo deberá esperar, cancelar la generación mediante confirmación o aplicarse únicamente a la siguiente solicitud.
+B03661 13. Pruebas de contratos
+B03662 Para comprobar la arquitectura, realizaremos pruebas sin necesitar siempre un modelo real.
+B03663 Esto será posible porque el Core dependerá de contratos abstractos.
+B03664 Prueba | Resultado esperado
+Proveedor simulado responde | El mensaje se completa
+Proveedor no responde | Se registra error y la UI continúa
+Fragmento tardío | No altera otra generación
+Cancelación durante streaming | Estado final coherente
+Error al guardar | No se informa éxito
+Reinicio inesperado | Se identifican generaciones interrumpidas
+Cambio de modelo | Se respeta la política de transición
+Mensaje vacío | Se rechaza antes de consultar Ollama
+Respuesta con instrucciones maliciosas | No se ejecutan acciones
+B03665 También necesitaremos pruebas de concurrencia y de recuperación tras fallos.
+B03666 14. Decisiones técnicas definitivas
+B03667 Monolito modular
+B03668 Un proceso principal Python y Ollama externo.
+B03669 Core independiente
+B03670 Sin dependencias directas de PySide6 ni Ollama.
+B03671 Contratos abstractos
+B03672 Proveedores y almacenamiento intercambiables.
+B03673 Entidades explícitas
+B03674 Conversation, Message, Generation y configuración.
+B03675 Eventos identificables
+B03676 Cada generación mantiene identidad y estado.
+B03677 Máquina de estados
+B03678 Transiciones controladas y estados terminales.
+B03679 Streaming supervisado
+B03680 Actualizaciones progresivas sin bloquear la UI.
+B03681 Cancelación verificable
+B03682 No asumir que detener equivale a cancelar.
+B03683 SQLite como fuente de verdad
+B03684 Transacciones y recuperación de estados.
+B03685 Errores tipificados
+B03686 Diagnóstico técnico y mensajes comprensibles.
+B03687 Seguridad desde el diseño
+B03688 Los modelos no pueden ejecutar herramientas.
+B03690 J.A.R.V.I.S. — Plan Maestro de Validación y Aceptación
+B03691 DISEÑO CONCEPTUAL · VERSIÓN 2.4 · MVP 0.1
+B03692 Objetivo: establecer cómo comprobaremos que Jarvis funciona correctamente, es estable, protege la información y mantiene un consumo razonable de recursos antes de aprobar su primera versión.
+B03693 Conservamos todas las decisiones anteriores: Python 3.12 + PySide6 + Ollama + SQLite, arquitectura modular eficiente, seguridad equilibrada y funcionamiento Local First + API Ready.
+B03694 En esta etapa no ejecutaremos pruebas, no programaremos ni instalaremos componentes. Definiremos las condiciones que deberá superar la futura implementación.
+B03695 1. ¿Cuándo consideraremos terminado Jarvis 0.1?
+B03696 No bastará con que Jarvis abra una ventana y responda una pregunta.
+B03697 Para aprobar el MVP deberá superar seis áreas de validación.
+B03700 2. Estrategia de pruebas
+B03701 Propongo cinco niveles de validación.
+B03702 Nivel | Qué comprobaremos | Dependencia de Ollama
+Unitarias | Reglas, estados, validaciones | No
+Contratos | Interfaces y formatos de respuesta | No, con simulaciones
+Integración | Core, SQLite y adaptador Ollama | Parcial
+End-to-end | Flujo completo desde PySide6 | Sí
+Aceptación | Uso real, rendimiento y recuperación | Sí
+B03703 Este enfoque nos permitirá detectar muchos errores sin cargar un modelo local en cada prueba.
+B03704 Por ejemplo, para comprobar la cancelación podremos utilizar un proveedor simulado que envíe fragmentos lentamente.
+B03705 Después repetiremos la prueba con Ollama real para confirmar que la integración se comporta correctamente.
+B03706 3. Casos de prueba funcionales
+B03707 Los siguientes casos constituyen nuestra primera matriz de aceptación.
+B03708 ID | Prueba | Resultado esperado | Prioridad
+F-01 | Crear conversación | Se crea con identificador único | Crítica
+F-02 | Enviar mensaje | Ollama recibe el contexto correcto | Crítica
+F-03 | Recibir streaming | El texto aparece progresivamente | Crítica
+F-04 | Cancelar generación | Se detiene o finaliza de forma coherente | Crítica
+F-05 | Cambiar modelo | Se utiliza el modelo seleccionado | Crítica
+F-06 | Abrir historial | Se recuperan conversaciones guardadas | Crítica
+F-07 | Renombrar conversación | El título persiste | Alta
+F-08 | Eliminar conversación | Se solicita confirmación y se elimina | Alta
+F-09 | Guardar configuración | Los valores persisten tras reiniciar | Crítica
+F-10 | Usar Quick Command | Comparte conversación y Core correctamente | Alta
+F-11 | Minimizar a bandeja | La aplicación permanece accesible | Alta
+F-12 | Salir completamente | Los componentes propios se cierran | Crítica
+B03709 Ejemplo: prueba F-03
+B03710 Condición inicial: Ollama está disponible y existe un modelo local compatible.
+B03711 Acción: el usuario envía una pregunta.
+B03712 Resultado esperado: Jarvis muestra el estado Generando, recibe fragmentos, actualiza la respuesta sin congelar la interfaz y termina con un estado correcto.
+B03713 La prueba fallará si el texto aparece en una conversación equivocada, si la ventana deja de responder o si se marca como completada una generación que realmente falló.
+B03717 5. Métricas de rendimiento
+B03718 Para el equipo inicial de referencia —Dell Latitude 5490, i5-8350U, 16 GB de RAM y gráficos integrados— estableceremos objetivos provisionales.
+B03719 Estos valores serán metas de diseño, no mediciones reales.
+B03720 Métrica | Objetivo inicial
+Inicio de la interfaz, sin cargar modelo | ≤ 5 segundos
+RAM de Jarvis en reposo, sin Ollama | ≤ 250 MB
+CPU de Jarvis en reposo | Promedio ≤ 2 %
+Respuesta visual a una interacción | ≤ 150 ms
+Cancelación visual de generación | ≤ 300 ms
+Cierre normal de la aplicación | ≤ 5 segundos
+Generaciones simultáneas | Máximo 1
+Bloqueos de interfaz | 0 en pruebas críticas
+B03721 La RAM de Ollama y del modelo se medirá por separado.
+B03722 También distinguiremos entre el tiempo que tarda Jarvis en enviar una solicitud y el tiempo que tarda el modelo en producir su primer fragmento.
+B03723 No sería correcto atribuir toda la latencia a la interfaz.
+B03724 6. Cómo mediremos el rendimiento
+B03725 Utilizaremos tres escenarios:
+B03726 Reposo: Jarvis abierto en bandeja, sin modelo cargado.
+B03727 Conversación: un modelo local generando una respuesta.
+B03728 Uso prolongado: múltiples conversaciones consecutivas, cambios de pantalla y operaciones de historial.
+B03729 Cada escenario tendrá mediciones repetidas bajo condiciones comparables.
+B03730 Registraremos CPU, RAM, latencia, errores y comportamiento visual.
+B03731 Los objetivos podrán ajustarse tras la prueba técnica inicial, pero cualquier cambio deberá quedar documentado y aprobado antes de utilizarlo como criterio de aceptación.
+B03732 7. Compatibilidad con Windows
+B03733 La matriz de compatibilidad distinguirá entre plataformas obligatorias y plataformas de validación secundaria.
+B03734 Entorno | Nivel propuesto
+Windows 11 x64 | Objetivo principal
+Windows 10 x64 | Compatibilidad condicionada
+Pantalla 1366 × 768 | Resolución mínima de prueba
+Pantalla Full HD | Resolución de referencia
+Escalado 100 % | Obligatorio
+Escalado 125 % | Obligatorio
+Escalado 150 % | Obligatorio
+Hardware con GPU dedicada | Opcional
+B03735 Windows 10 requerirá una combinación de dependencias compatible y pruebas específicas; no asumiremos que cualquier versión futura de Qt seguirá soportándolo.
+B03736 Pruebas visuales
+B03737 Verificaremos que los textos no se corten, que los botones permanezcan accesibles y que las ventanas puedan utilizarse con teclado.
+B03738 El panel Quick Command deberá aparecer dentro del área visible de la pantalla, incluso cuando se utilicen varios monitores o diferentes escalados.
+B03739 8. Pruebas de seguridad y privacidad
+B03740 Aunque el MVP no controlará Windows mediante herramientas, necesitaremos comprobar que sus límites son reales.
+B03741 ID | Escenario | Resultado esperado
+S-01 | El modelo solicita ejecutar un comando | Se trata como texto; no se ejecuta
+S-02 | Respuesta contiene HTML o scripts | No se ejecuta contenido activo
+S-03 | Ollama devuelve contenido inesperado | Se valida y gestiona sin comprometer la aplicación
+S-04 | Error técnico contiene datos sensibles | Los registros los omiten o redactan
+S-05 | Usuario elimina conversación | Se aplica la política de eliminación local
+S-06 | Conexión remota no autorizada | No se utiliza
+S-07 | Proveedor desconectado | No se cambia silenciosamente a una API externa
+S-08 | Archivo SQLite no disponible | Se informa el fallo sin afirmar que se guardó
+B03742 Regla fundamental: Jarvis 0.1 no tendrá ninguna vía para convertir una respuesta del modelo en ejecución automática de comandos.
+B03743 También verificaremos que las conversaciones no se envíen a proveedores externos por defecto.
+B03744 9. Pruebas de persistencia y recuperación
+B03745 SQLite será la fuente de verdad para los datos confirmados.
+B03746 Probaremos los siguientes escenarios:
+B03747 Cerrar y abrir Jarvis normalmente.
+B03748 Cerrar la aplicación durante una respuesta.
+B03749 Interrumpir el proceso inesperadamente.
+B03750 Simular un fallo al guardar.
+B03751 Intentar abrir una base de datos inaccesible.
+B03752 Recuperar una conversación con mensajes incompletos.
+B03753 Cambiar configuraciones y reiniciar.
+B03754 Criterio de aceptación
+B03755 Los mensajes confirmados deberán conservarse íntegros.
+B03756 Los mensajes interrumpidos deberán identificarse como tales.
+B03757 Jarvis no deberá inventar contenido faltante ni presentar una respuesta parcial como si estuviera completa.
+B03758 10. Pruebas de estabilidad
+B03759 Propondría una prueba de uso continuo de al menos dos horas, con conversaciones, navegación, apertura de historial y cancelaciones.
+B03760 También realizaríamos una prueba de estrés controlada con solicitudes consecutivas y errores simulados.
+B03761 La aplicación deberá continuar operativa sin bloqueos ni crecimiento anómalo sostenido de memoria.
+B03762 No estableceremos como objetivo que Ollama nunca falle. Lo importante es que Jarvis pueda manejar sus fallos de manera controlada.
+B03765 12. Evidencias necesarias para aprobar una prueba
+B03766 No bastará con escribir "funciona".
+B03767 Cada prueba crítica deberá conservar información mínima:
+B03768 Campo | Ejemplo
+Identificador | F-03
+Versión evaluada | Jarvis 0.1
+Entorno | Windows 11 x64
+Condiciones iniciales | Ollama y modelo disponibles
+Acción realizada | Enviar mensaje
+Resultado esperado | Streaming sin bloqueo
+Resultado observado | Evidencia de ejecución
+Estado | Aprobada / Fallida / Bloqueada
+Evidencia | Registro, captura o medición
+B03769 Cuando corresponda, las evidencias podrán incluir capturas de pantalla, resultados automatizados y métricas.
+B03770 Los registros técnicos deberán proteger la privacidad de las conversaciones.
+B03771 13. Condiciones para bloquear la entrega
+B03772 La versión 0.1 no se aprobará si ocurre cualquiera de estas situaciones:
+B03773 Se pierde información confirmada de conversaciones durante operaciones normales.
+B03774 El modelo puede ejecutar comandos o herramientas no autorizadas.
+B03775 Jarvis envía información a servicios externos sin autorización.
+B03776 La interfaz se congela de forma reproducible durante operaciones críticas.
+B03777 Los errores de Ollama provocan cierres inesperados reproducibles.
+B03778 La cancelación produce estados inconsistentes o mezcla mensajes de conversaciones diferentes.
+B03779 El instalador o la ejecución requieren privilegios injustificados.
+B03780 No es posible reproducir las pruebas críticas en el entorno objetivo.
