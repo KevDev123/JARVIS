@@ -20,3 +20,7 @@ Se reabre el DOCX con python-docx y se comprueba integridad ZIP, correspondencia
 La habilidad documents requiere renderizar e inspeccionar las imágenes antes de entregar una versión final. Cuando exista un renderizador compatible se deberá generar las páginas, inspeccionarlas, corregir cualquier problema y actualizar este registro. Hasta entonces el Word conserva condición de borrador.
 
 La copia Markdown contiene el mismo contenido y puede consultarse mientras tanto. Ninguna comprobación de esta bitácora ejecuta I1 o levanta su pausa.
+
+## Edición del 2 de noviembre de 2026
+
+Se añadió el paso 7 sobre el primer envío a GitHub. Se comprobó la integridad del archivo Word y se cotejaron todos sus párrafos con el texto Markdown. El intento de renderizar esta edición volvió a informar que falta soffice.exe. Su revisión visual sigue pendiente.

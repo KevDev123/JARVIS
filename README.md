@@ -29,7 +29,7 @@ I1 se limitará a dominio, contratos, coordinación y dobles de prueba en memori
 
 ## Seguimiento del trabajo
 
-El repositorio Git es local, en la rama `codex/i1-preparacion`, sin remoto configurado. El primer commit `6b5a1ed` conserva la preparación y su estado pausado. Se crearán commits por avances coherentes y revisados.
+La rama `main` sigue a `origin/main` en [KevDev123/JARVIS](https://github.com/KevDev123/JARVIS). El primer commit `6b5a1ed` conserva la preparación. El siguiente, `b64fff4`, añade la bitácora y los acuerdos de continuidad.
 
 La [bitácora didáctica](docs/BITACORA_JARVIS.md) explica los pasos y conceptos. Su copia Word está creada en `docs/Bitacora_JARVIS.docx`, como borrador pendiente de revisión visual: falta el renderizador LibreOffice del entorno. Consulta [el registro de revisión](docs/REVISION_BITACORA.md). `tools/build_bitacora.py` la genera con el runtime documental; no es código de I1 y no añade dependencias al Core.
 

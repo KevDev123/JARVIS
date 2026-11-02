@@ -176,3 +176,24 @@ Antes de I2 se propondrán el esquema SQLite, las transacciones, el guardado de 
 La Fase 0 y el prompt maestro se encuentran en la carpeta superior. El detalle de lo inspeccionado está en I1_PREPARACION.md y las reglas en I1_DECISIONES_PROPUESTAS.md. La documentación oficial consultada durante la preparación fue docs.python.org/3.12/library/venv.html, docs.python.org/3.12/license.html, docs.pytest.org/en/stable/getting-started.html y pypi.org/project/pytest/9.0.2/.
 
 **Idea clave.** Un avance confiable tiene una explicación, archivos identificables y evidencia proporcional. Todavía estamos construyendo las bases de JARVIS.
+
+<!-- page -->
+
+## Paso 7 Enviar el historial a GitHub
+
+El 2 de noviembre de 2026 se conectó jarvis-app con el repositorio KevDev123/JARVIS que creó el usuario. La consulta inicial de GitHub devolvió una lista vacía de ramas y etiquetas. En la computadora ya había dos commits listos para subir.
+
+Se llamó **origin** a la dirección del repositorio en GitHub y se renombró la rama local a **main**. Cambiar el nombre conservó el historial. Estos son los comandos de configuración que se ejecutaron una sola vez.
+
+```powershell
+git remote add origin https://github.com/KevDev123/JARVIS.git
+git branch -m main
+```
+
+Con **git push -u origin main**, Git envió los commits 6b5a1ed y b64fff4 y creó la rama main en GitHub. La opción -u guardó la relación entre la rama de esta computadora y la remota. En esta máquina, para el comando con acceso a red se indicó la carpeta de confianza mediante la opción temporal safe.directory de Git, porque el proceso usó otra identidad de Windows.
+
+Para consultar la sincronización, abre PowerShell en jarvis-app y ejecuta el siguiente comando. La primera línea muestra la rama local y la rama remota que sigue. Si dice «ahead 1», hay un commit local pendiente de subir respecto de la última información recibida del remoto.
+
+```powershell
+git status -sb
+```
